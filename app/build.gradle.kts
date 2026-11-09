@@ -12,8 +12,10 @@ android {
         applicationId = "com.zion.gallerysorter"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1-phase1"
+        versionCode = 2
+        versionName = "0.2-phase1"
+        // Galaxy A56 is 64-bit ARM: ship only that, the APK shrinks a lot.
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
 
     // Fixed keystore so every new build installs over the previous one

@@ -76,20 +76,28 @@ class Classifier : Closeable {
         )
         val greeting = best(
             "flower", "petal", "rose", "bouquet", "sunset", "sky", "heart", "candle", "butterfly",
-            "star", "plant",
+            "star", "plant", "poster",
         )
+        val screenshotLabel = best("screenshot")
+        val baby = best("baby", "toddler", "child")
+        val paper = best("paper", "receipt", "document", "handwriting")
         val work = best(
             "computer", "monitor", "screen", "keyboard", "laptop", "electronic device", "cable",
             "machine", "server", "desk", "office",
         )
         val top = labels.firstOrNull()?.second ?: 0f
 
+        // v2 (after the first 200-photo report): screenshots saved outside the Screenshots
+        // folder, food under 0.7, babies whose face the detector missed, paper documents.
         val (category, confidence) = when {
+            screenshotLabel >= 0.7f -> Category.SCREENSHOT to 0.85
             textLines >= 12 -> Category.DOCUMENT to 0.85
             textLines >= 6 && !fromWhatsApp -> Category.DOCUMENT to 0.7
             bigFaces >= 1 -> Category.PEOPLE to 0.8
+            baby >= 0.7f -> Category.PEOPLE to 0.7
+            food >= 0.6f -> Category.FOOD to maxOf(food.toDouble(), 0.66)
             faces.isNotEmpty() -> Category.PEOPLE to 0.55
-            food >= 0.7f -> Category.FOOD to food.toDouble()
+            paper >= 0.7f && textLines >= 2 -> Category.DOCUMENT to 0.66
             fromWhatsApp && greeting >= 0.7f -> Category.GREETING to 0.7
             fromWhatsApp && (greeting >= 0.5f || textLines in 1..11) -> Category.GREETING to 0.55
             work >= 0.7f -> Category.WORK to 0.6

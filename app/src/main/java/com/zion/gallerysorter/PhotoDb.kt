@@ -35,7 +35,7 @@ data class Stats(
 
 /** Local record of every scanned photo. Only this app's own database: no photo file is touched. */
 class PhotoDb private constructor(context: Context) :
-    SQLiteOpenHelper(context, "photos.db", null, 1) {
+    SQLiteOpenHelper(context, "photos.db", null, 2) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -58,7 +58,37 @@ class PhotoDb private constructor(context: Context) :
         )
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    /** New rules: forget automatic results so they are sorted again; keep the user's corrections. */
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        db.execSQL("DELETE FROM photos WHERE user_category IS NULL")
+    }
+
+    /** Where the photos come from (Camera, WhatsApp, Screenshots...). */
+    fun folderFrequency(limit: Int): List<Pair<String, Int>> {
+        val out = ArrayList<Pair<String, Int>>()
+        readableDatabase.rawQuery(
+            "SELECT path, COUNT(*) AS n FROM photos GROUP BY path ORDER BY n DESC LIMIT $limit", null
+        ).use { c -> while (c.moveToNext()) out.add((c.getString(0) ?: "") to c.getInt(1)) }
+        return out
+    }
+
+    /** For "not sure" photos: what the rules leaned towards, and the top label. */
+    fun unsureBreakdown(): List<Pair<String, Int>> {
+        val freq = HashMap<String, Int>()
+        readableDatabase.rawQuery(
+            "SELECT category, labels, faces, text_lines FROM photos " +
+                "WHERE user_category IS NULL AND confidence < ?",
+            arrayOf(UNSURE_BELOW.toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                val cat = Category.parse(c.getString(0))?.he ?: "?"
+                val top = (c.getString(1) ?: "").substringBefore("|").substringBefore(":")
+                val key = "$cat · ${top.ifBlank { "בלי תווית" }} · פנים ${c.getInt(2)} · טקסט ${c.getInt(3)}"
+                freq[key] = (freq[key] ?: 0) + 1
+            }
+        }
+        return freq.entries.sortedByDescending { it.value }.take(40).map { it.key to it.value }
+    }
 
     fun processedIds(): Set<Long> {
         val ids = HashSet<Long>()
