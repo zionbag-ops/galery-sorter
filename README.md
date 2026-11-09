@@ -6,7 +6,7 @@
 שום קובץ לא זז ולא נמחק.
 
 ## התקנה בטלפון
-1. בטלפון, פתח: https://github.com/zionbag-ops/gallery-sorter/releases/latest
+1. בטלפון, פתח: https://github.com/zionbag-ops/galery-sorter/releases/latest
 2. הורד את `gallery-sorter.apk` ופתח אותו.
 3. אם אנדרואיד חוסם, אשר "התקנה ממקורות לא ידועים" לדפדפן.
 
