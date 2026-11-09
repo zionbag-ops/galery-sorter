@@ -87,19 +87,26 @@ class Classifier : Closeable {
         )
         val top = labels.firstOrNull()?.second ?: 0f
 
-        // v2 (after the first 200-photo report): screenshots saved outside the Screenshots
-        // folder, food under 0.7, babies whose face the detector missed, paper documents.
+        // A phone screenshot is tall and narrow (Galaxy A56: 1080x2340 = 2.17).
+        val tall = bitmap.height.toFloat() / bitmap.width.toFloat() >= 1.9f
+
+        // v3, after the reviewed report: people 36/36 correct; documents 0/5, food 0/2,
+        // screenshots 1/4 wrong. 80% of photos are WhatsApp images, and text-heavy WhatsApp
+        // images are mostly Hebrew greetings/posters that the on-device reader cannot read:
+        // those are left "not sure" on purpose, for Gemini (which reads Hebrew) in phase 3.
         val (category, confidence) = when {
-            screenshotLabel >= 0.7f -> Category.SCREENSHOT to 0.85
-            textLines >= 12 -> Category.DOCUMENT to 0.85
-            textLines >= 6 && !fromWhatsApp -> Category.DOCUMENT to 0.7
+            screenshotLabel >= 0.7f && tall -> Category.SCREENSHOT to 0.85
             bigFaces >= 1 -> Category.PEOPLE to 0.8
+            faces.size >= 2 -> Category.PEOPLE to 0.75
             baby >= 0.7f -> Category.PEOPLE to 0.7
-            food >= 0.6f -> Category.FOOD to maxOf(food.toDouble(), 0.66)
-            faces.isNotEmpty() -> Category.PEOPLE to 0.55
-            paper >= 0.7f && textLines >= 2 -> Category.DOCUMENT to 0.66
-            fromWhatsApp && greeting >= 0.7f -> Category.GREETING to 0.7
-            fromWhatsApp && (greeting >= 0.5f || textLines in 1..11) -> Category.GREETING to 0.55
+            !fromWhatsApp && textLines >= 12 -> Category.DOCUMENT to 0.8
+            !fromWhatsApp && textLines >= 6 -> Category.DOCUMENT to 0.66
+            fromWhatsApp && textLines >= 1 -> Category.GREETING to 0.55
+            food >= 0.75f -> Category.FOOD to food.toDouble()
+            faces.isNotEmpty() -> Category.PEOPLE to 0.6
+            paper >= 0.7f && textLines >= 2 -> Category.DOCUMENT to 0.6
+            fromWhatsApp && greeting >= 0.7f -> Category.GREETING to 0.66
+            fromWhatsApp && greeting >= 0.5f -> Category.GREETING to 0.55
             work >= 0.7f -> Category.WORK to 0.6
             top >= 0.8f -> Category.OTHER to 0.7
             else -> Category.OTHER to 0.5

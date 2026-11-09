@@ -41,13 +41,15 @@ object MediaQuery {
             val takenCol = c.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
             val addedCol = c.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
             while (c.moveToNext()) {
+                val relPath = c.getString(pathCol) ?: ""
+                if (EXCLUDED.any { relPath.startsWith(it, ignoreCase = true) }) continue
                 val taken = if (c.isNull(takenCol)) 0L else c.getLong(takenCol)
                 val added = if (c.isNull(addedCol)) 0L else c.getLong(addedCol) * 1000L
                 out.add(
                     MediaItem(
                         id = c.getLong(idCol),
                         name = c.getString(nameCol) ?: "",
-                        path = c.getString(pathCol) ?: "",
+                        path = relPath,
                         dateTaken = if (taken > 0) taken else added,
                     )
                 )
@@ -56,12 +58,11 @@ object MediaQuery {
         return out
     }
 
-    fun count(context: Context): Int =
-        context.contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            arrayOf(MediaStore.Images.Media._ID),
-            MIME_FILTER,
-            null,
-            null
-        )?.use { it.count } ?: 0
+    /**
+     * Working files, not the gallery: downloads (e.g. greeting-video strips, app assets)
+     * and documents. They are never sorted or moved.
+     */
+    private val EXCLUDED = listOf("Download/", "Documents/")
+
+    fun count(context: Context): Int = list(context).size
 }

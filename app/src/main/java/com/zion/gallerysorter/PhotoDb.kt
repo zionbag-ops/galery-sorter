@@ -35,7 +35,7 @@ data class Stats(
 
 /** Local record of every scanned photo. Only this app's own database: no photo file is touched. */
 class PhotoDb private constructor(context: Context) :
-    SQLiteOpenHelper(context, "photos.db", null, 2) {
+    SQLiteOpenHelper(context, "photos.db", null, 3) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -61,6 +61,26 @@ class PhotoDb private constructor(context: Context) :
     /** New rules: forget automatic results so they are sorted again; keep the user's corrections. */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         db.execSQL("DELETE FROM photos WHERE user_category IS NULL")
+        // Download/ and Documents/ are working files, not the gallery: no longer scanned.
+        db.execSQL("DELETE FROM photos WHERE path LIKE 'Download/%' OR path LIKE 'Documents/%'")
+    }
+
+    /** Each wrong guess the user corrected: "sorted to X -> belongs in Y". */
+    fun confusion(): List<Triple<Category, Category, Int>> {
+        val out = ArrayList<Triple<Category, Category, Int>>()
+        readableDatabase.rawQuery(
+            "SELECT category, user_category, COUNT(*) AS n FROM photos " +
+                "WHERE user_category IS NOT NULL AND user_category != category " +
+                "GROUP BY category, user_category ORDER BY n DESC",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                val a = Category.parse(c.getString(0)) ?: Category.OTHER
+                val b = Category.parse(c.getString(1)) ?: Category.OTHER
+                out.add(Triple(a, b, c.getInt(2)))
+            }
+        }
+        return out
     }
 
     /** Where the photos come from (Camera, WhatsApp, Screenshots...). */

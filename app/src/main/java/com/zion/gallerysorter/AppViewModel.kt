@@ -106,6 +106,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         sb.appendLine("בדיקה לפי תיקייה (נבדקו / נכונות):")
         db.reviewByCategory().forEach { (c, n, ok) -> sb.appendLine("  ${c.he}: $n / $ok") }
         sb.appendLine()
+        sb.appendLine("טעויות שתיקנת (מוין ל ← שייך ל):")
+        db.confusion().forEach { (a, b, n) -> sb.appendLine("  ${a.he} ← ${b.he}: $n") }
+        sb.appendLine()
         sb.appendLine("מאיפה התמונות:")
         db.folderFrequency(12).forEach { (p, n) -> sb.appendLine("  ${p.ifBlank { "(שורש)" }}: $n") }
         sb.appendLine()
